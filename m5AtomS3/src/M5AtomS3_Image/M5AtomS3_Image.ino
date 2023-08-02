@@ -31,14 +31,22 @@ void taskSampling(void* pvParameters) {  // Define the tasks to be executed in
     psamp = &samples[samplePane] ;
     data = 0 ;
     if ( digitalRead(monCh1) == HIGH )
+      data = 2 ;
+    else
       data = 1 ;
     if ( digitalRead(monCh2) == HIGH )
-      data += 2 ;
-    if ( digitalRead(monCh3) == HIGH )
-      data += 4 ;
-    if ( digitalRead(monCh4) == HIGH )
       data += 8 ;
-    psamp->datas[psamp->smpIdx] = data ;
+    else
+      data += 4 ;
+    if ( digitalRead(monCh3) == HIGH )
+      data += 32 ;
+    else
+      data += 16 ;
+    if ( digitalRead(monCh4) == HIGH )
+      data += 64 ;
+    else
+      data += 128 ;
+    psamp->datas[psamp->smpIdx] |= data ;
     psamp->smpIdx ++ ;
     if ( psamp->smpIdx >= SAMPLEMAX )
       psamp->smpIdx = 0 ;
@@ -67,10 +75,13 @@ if (psamp->smpIdx == 150 )
           //  今のを上書きする
           psampback = psamp ;
         }
+        int i ;
         psampback->trigIdx = -1 ;
         psampback->afterTrig = 0 ;
         psampback->smpIdx = 0 ;
         psampback->displayed = 0 ;
+        for ( i=0 ; i < SAMPLEMAX ; i ++ )
+          psampback->datas[i] = 0 ;        
         sampleCount ++ ;
         USBSerial.print("sample ");
         USBSerial.println(sampleCount) ;
@@ -108,7 +119,53 @@ void taskDraw(void* pvParameters) {  // Define the tasks to be executed in
       delay(100) ;
     }else{
       //  表示前なら、新しいデータ。表示する
+      int idx = psamp->trigIdx ;
+      int finidx ;
+      int i,x ;
+      int d ;
+      idx = idx - 64 ;
+      finidx = idx + 128 ;
+      x = 0 ;
+      const int ch1Offset = 128-6 ;
+      const int ch2Offset = 128-6*2 ;
+      const int ch3Offset = 128-6*3 ;
+      const int ch4Offset = 128-6*4 ;
+      for ( i = idx ; i < finidx ; i ++){
+        d = psamp->datas[i] ;
 
+        //  0     *****
+        //  1     *****
+        //  2     *****
+        //  3 ****    
+        //  4 
+        //  5
+
+        // CH1 黄色
+        M5.lcd.drawLine( x , ch1Offset + 4 , x , ch1Offset+0 ,BLACK ) ;
+        if ( d & 1 )
+          M5.lcd.drawLine( x , ch1Offset + 4 , x , ch1Offset+3 ,WHITE ) ;
+        if ( d & 2 )
+          M5.lcd.drawLine( x , ch1Offset + 2 , x , ch1Offset+0 ,WHITE ) ;
+        // CH2 水色
+        M5.lcd.drawLine( x , ch2Offset + 4 , x , ch2Offset+0 ,BLACK ) ;
+        if ( d & 4 )
+          M5.lcd.drawLine( x , ch2Offset + 4 , x , ch2Offset+3 ,WHITE ) ;
+        if ( d & 8 )
+          M5.lcd.drawLine( x , ch2Offset + 2 , x , ch2Offset+0 ,WHITE ) ;
+        // CH3 マゼンダ
+        M5.lcd.drawLine( x , ch3Offset + 4 , x , ch3Offset+0 ,BLACK ) ;
+        if ( d & 16 )
+          M5.lcd.drawLine( x , ch3Offset + 4 , x , ch3Offset+3 ,WHITE ) ;
+        if ( d & 32 )
+          M5.lcd.drawLine( x , ch3Offset + 2 , x , ch3Offset+0 ,WHITE ) ;
+        // CH4 緑
+        M5.lcd.drawLine( x , ch4Offset + 4 , x , ch4Offset+0 ,BLACK ) ;
+        if ( d & 64 )
+          M5.lcd.drawLine( x , ch4Offset + 4 , x , ch4Offset+3 ,WHITE ) ;
+        if ( d & 128 )
+          M5.lcd.drawLine( x , ch4Offset + 2 , x , ch4Offset+0 ,WHITE ) ;
+        x ++ ;
+      }
 
 
 

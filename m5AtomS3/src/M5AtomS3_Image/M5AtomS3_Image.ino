@@ -1,4 +1,9 @@
+#include <HTTP_Method.h>
+#include <Uri.h>
+#include <WebServer.h>
+
 #include <M5AtomS3.h>
+#include "myDefs.h"
 
 const int monCh1 = 5 ;
 const int monCh2 = 6 ;
@@ -6,6 +11,8 @@ const int monCh3 = 7 ;
 const int monCh4 = 8 ;
 const int genCh1 = 38 ;
 const int genCh2 = 39 ;
+
+WebServer server(MYWIFIPORT) ;
 
 const int SAMPLEMAX = 256 ;   // 128dot * 2
 struct TSAMPLES {
@@ -184,6 +191,16 @@ void taskDraw(void* pvParameters) {  // Define the tasks to be executed in
   }
 }
 
+void WifiConnect(){
+  WiFi.begin(MYWIFISSID,MYWIFIPASS);
+  while(WiFi.status() != WL_CONNECTED){
+    delay(500);
+    M5.Lcd.print('.');
+  }
+  M5.Lcd.print("\r\nWiFi connected\r\nIP address: ");
+  M5.Lcd.println(WiFi.localIP());
+}
+
 
 void setup()
 {
@@ -201,6 +218,12 @@ void setup()
 
   pinMode(genCh1,OUTPUT) ;
   pinMode(genCh2,OUTPUT) ;
+
+  WifiConnect() ;
+  server.on("/",handleRoot) ;
+  server.onNotFound(handleNotFound) ;
+  server.begin() ;
+  M5.Lcd.println("HTTP Server Start") ;
 
     // Creat Task1.  创建线程1
     xTaskCreatePinnedToCore(
@@ -223,4 +246,31 @@ void setup()
 void loop()
 {
   //  GET BIT FROM PIO
+  server.handleClient() ;
+}
+
+int temp = 0 ;
+char buf[1024];
+
+void handleRoot(){
+  temp = temp+1 ;
+  
+  sprintf(buf, 
+    "<html>\
+     <head>\
+        <title>Count</title>\
+     </head>\
+     <body>\
+        <h1>M5AtomS3 CallCount</h1>\
+        <p>Count : %d times</p>\
+     </body>\
+     </html>",
+  temp);
+  server.send(200, "text/html", buf);
+  M5.Lcd.println("accessed on \"/\"");
+}
+
+void handleNotFound(){
+  server.send(404, "text/plain", "File Not Found\n\n");
+  M5.Lcd.println("File Not Found");
 }
